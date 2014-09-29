@@ -1,0 +1,48 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>CAPTCHA Recognition</title>
+        <style>
+            /* reset start */
+            html, body, div, img, h1, h2, p, a, ul, li, dl, dd, dt { vertical-align: baseline; font-family: inherit; font-weight: inherit; font-style: inherit; outline: 0; padding: 0; margin: 0; border: 0;}
+            :focus {outline: 0;}
+            img {border:none;}
+            body { }
+            /* reset end */
+            /* page start */
+            .captcha-ctn { width: 200px; padding: 20px 30px; border: 1px solid #56B4EF; border-radius: 3px; box-shadow: 0 0 10px rgba(82, 168, 236, .6); margin: 200px auto 0; }
+            .box { padding: 5px 0; }
+            .tit { display: inline-block; width: 60px; font: 400 12px/18px sans-serif; }
+            .img { vertical-align: middle; }
+            .btn { width: 64px; }
+            /* page end */
+        </style>
+    </head>
+    <body>
+        <div class="captcha-ctn">
+            <div class="box"><span class="tit">原始图片：</span><img src="" class="img" id="captcha-original" /></div>
+            <div class="box"><span class="tit">绘制结果：</span><canvas class="img" id="captcha-canvas"></canvas></div>
+            <div class="box"><span class="tit">识别结果：</span><span id="captcha-result">--</span></div>
+            <div class="box"><span class="tit"></span><input type="button" value="识别" id="captcha-btn" class="btn" /></div>
+        </div>
+        <script src="CaptchaHelper.js"></script>
+        <script src="Captcha.js"></script>
+        <script>
+            CaptchaHelper.domReady(function(){
+                var _c = new Captcha();
+                (function(){
+                    var img = CaptchaHelper.$("#captcha-original");
+                    CaptchaHelper.on(img, "load", function(){
+                        _c.bind('#captcha-original');
+                        _c.painter('#captcha-canvas');
+                        _c.init();
+                    });
+                    img.src = "captcha.jpg";
+                })();
+                CaptchaHelper.on('#captcha-btn', 'click', function(){
+                    _c.recognition();
+                });
+            });
+        </script>
+    </body>
+</html>
