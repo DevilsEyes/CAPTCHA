@@ -1,7 +1,7 @@
 /**
  * Created by skyperson@gmail.com on 2014/9/28.
  * Copyright (c) 2014 ZhangRui
- * MIT License
+ * MIT Licensed
  * Example:
  *      var _c = new Captcha().bind('#img_id').painter('#canvas_id').init();
  */
