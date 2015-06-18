@@ -35,14 +35,14 @@
         this.ctx.fillStyle = "#FFF";
         this.ctx.fill();
         this.ctx.drawImage(this.img, this.options.matrixRadius, this.options.matrixRadius);
-        this.options.dgGrayValue = getDgGrayValue.call(this);
+        this.options.dgGrayValue = getDgGrayValue.call(this); // 取灰度临界值
     };
 
     captcha.prototype.recognition = function(){
-        convert.call(this, 'gray');
+        //convert.call(this, 'gray');
         convert.call(this, 'wb');
-        clearNoise.call(this);
-        charSplit.call(this);
+        //clearNoise.call(this);
+        //charSplit.call(this);
         //medianFiltering.call(this);
         //threeChannelFiltering.call(this);
     };
@@ -112,10 +112,10 @@
         var nearDots = 0;
         var XSpan, YSpan, tmpX, tmpY;
         //逐点判断
-        for (var i = 0; i < this.cvs.width; i++){
-            for (var j = 0; j < this.cvs.height; j++){
-                piexl = this.ctx.getImageData(i, j, 1, 1); //.GetPixel(i, j);
-                if (piexl.data[0] < this.options.dgGrayValue){
+        for (var i = 0; i < this.cvs.width; i++){   // 遍历宽度
+            for (var j = 0; j < this.cvs.height; j++){  // 遍历高度
+                piexl = this.ctx.getImageData(i, j, 1, 1); //.GetPixel(i, j);   取每点像素
+                if (piexl.data[0] < this.options.dgGrayValue){   // 如果是有效点，开始判断周围的点是否有噪音
                     nearDots = 0;
                     //判断周围8个点是否全为空
                     if (i == 0 || i == this.cvs.width - 1 || j == 0 || j == this.cvs.height - 1){  //边框全去掉
@@ -131,13 +131,13 @@
                         if (this.ctx.getImageData(i + 1, j + 1, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
                     }
 
-                    if (nearDots < this.options.maxNearPoints){
+                    if (nearDots < this.options.maxNearPoints){    // 如果周围噪点小于规定的最大噪点阈值，标记为空点
                         piexl.data[0] = 255;
                         piexl.data[1] = 255;
                         piexl.data[2] = 255;
                         this.ctx.putImageData(piexl, i, j);   //去掉单点 && 粗细小3邻边点  : , Color.FromArgb(255, 255, 255)
                     }
-                } else {  //背景
+                } else {  //否则标记为空点
                     piexl.data[0] = 255;
                     piexl.data[1] = 255;
                     piexl.data[2] = 255;
@@ -214,17 +214,17 @@
         for( var i = _borderSize; i < _height - _borderSize; i++){
             for(var j = _borderSize; j < _width - _borderSize; j++){
                 for(var m = 0; m < 3; m++){
-                    for(var k = 0; k < mine.options.medianSize; k++){
+                    for(var k = 0; k < mine.options.medianSize; k++){               // 计算中值滤波半径宽
                         _row[k] = [];
-                        for(var l = 0; l < mine.options.medianSize; l++){
+                        for(var l = 0; l < mine.options.medianSize; l++){               // 计算中值滤波半径高
                             var left = j - _borderSize + l,
                                 top = i - _borderSize + k;
-                            _pixel = mine.ctx.getImageData(left, top, 1, 1);
+                            _pixel = mine.ctx.getImageData(left, top, 1, 1);              // 取出矩阵数据
                             _row[k][l] = _pixel.data[m];
                         }
                     }
 
-                    _minOfMax = Math.min.apply(null,(function(){
+                    _minOfMax = Math.min.apply(null,(function(){         // 取最大值里最小的
                         var ret = [];
                         for(var m = 0; m < mine.options.medianSize; m++){
                             ret.push(Math.max.apply(null,_row[m]));
@@ -232,7 +232,7 @@
                         return ret;
                     })());
 
-                    _medOfMed = _medianValue((function(){
+                    _medOfMed = _medianValue((function(){         // 取中值里中间
                         var ret = [];
                         for(var m = 0; m < mine.options.medianSize; m++){
                             ret.push(_medianValue(_row[m]));
@@ -240,7 +240,7 @@
                         return ret;
                     })());
 
-                    _maxOfMin = Math.max.apply(null,(function(){
+                    _maxOfMin = Math.max.apply(null,(function(){         // 取最小值里最大的
                         var ret = [];
                         for(var m = 0; m < mine.options.medianSize; m++){
                             ret.push(Math.min.apply(null,_row[m]));
@@ -262,10 +262,10 @@
     function convert(type){ //gray,wb
         var mine = this;
         var __effect = {
-            "gray": function(r,g,b){
+            "gray": function(r,g,b){            // 去色，变为灰度
                 return parseFloat(r * 299 / 1000 + g * 587 / 1000 + b * 114 / 1000);
             },
-            "wb": function(r,g,b){
+            "wb": function(r,g,b){            // 二值化
                 return parseInt((r + g + b) / 3) > mine.options.dgGrayValue ? 255 : 0;
             }
         };
@@ -274,9 +274,9 @@
             _imageSize = mine.cvs.width * mine.cvs.height;
 
         for (var i = 0; i < _imageSize * 4; i += 4) {
-            var _red = _image.data[i];
-            var _green = _image.data[i + 1];
-            var _blue = _image.data[i + 2];
+            var _red = _image.data[i];               // 红色位
+            var _green = _image.data[i + 1];               // 绿色位
+            var _blue = _image.data[i + 2];               // 蓝色位
             var _imageData = __effect[type](_red, _green, _blue);
 
             _image.data[i] = _imageData;
