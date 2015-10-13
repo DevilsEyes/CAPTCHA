@@ -10,7 +10,7 @@
             body { }
             /* reset end */
             /* page start */
-            .captcha-ctn { width: 200px; padding: 20px 30px; border: 1px solid #56B4EF; border-radius: 3px; box-shadow: 0 0 10px rgba(82, 168, 236, .6); margin: 200px auto 0; }
+            .captcha-ctn { width: 200px; padding: 20px 30px; border: 1px solid #56B4EF; border-radius: 3px; box-shadow: 0 0 10px rgba(82, 168, 236, .6); margin: 20px 0 0 20px; }
             .box { padding: 5px 0; }
             .tit { display: inline-block; width: 60px; font: 400 12px/18px sans-serif; }
             .img { vertical-align: middle; }
@@ -19,9 +19,12 @@
         </style>
     </head>
     <body>
+        <p>1、请使用最新版 Chrome 浏览器访问；</p>
+        <p>2、请启动本地服务进行访问；</p>
+        <p>3、由于域策略限制，目前还不支持站外图片。</p>
         <div class="captcha-ctn">
             <div class="box"><span class="tit">原始图片：</span><img src="" class="img" id="captcha-original" /></div>
-            <div class="box"><span class="tit">绘制结果：</span><canvas class="img" id="captcha-canvas"></canvas></div>
+            <div class="box"><span class="tit">处理过程：</span><canvas class="img" id="captcha-canvas"></canvas></div>
             <div class="box"><span class="tit">识别结果：</span><span id="captcha-result">--</span></div>
             <div class="box"><span class="tit"></span><input type="button" value="识别" id="captcha-btn" class="btn" /></div>
         </div>
