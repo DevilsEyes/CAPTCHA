@@ -20,35 +20,71 @@
         return this;
     };
 
-    captcha.prototype.bind = function(str){
+    var fn = captcha.prototype;
+
+    fn.bind = function(str){
         this.img = CaptchaHelper.$(str);
         return this;
     };
 
-    captcha.prototype.painter = function(str){
+    fn.painter = function(str){
         this.cvs = CaptchaHelper.$(str);
         this.ctx = this.cvs.getContext("2d");
         return this;
     };
 
-    captcha.prototype.init = function(){
+    fn.init = function(){
         var width = this.cvs.width = this.img.offsetWidth + this.options.matrixRadius * 2,
             height = this.cvs.height = this.img.offsetHeight + this.options.matrixRadius * 2;
         this.ctx.rect(0, 0, width, height);
         this.ctx.fillStyle = "#FFF";
         this.ctx.fill();
         this.ctx.drawImage(this.img, this.options.matrixRadius, this.options.matrixRadius);
-        //this.options.dgGrayValue = getDgGrayValue.call(this); // 取灰度临界值，太耗时，先暂时用中间值
+        //this.options.dgGrayValue = getDgGrayValue.call(this); // 取灰度临界值，太耗时，先暂时用估计值
         this.options.dgGrayValue = 188;
     };
 
-    captcha.prototype.recognition = function(){
+    fn.recognition = function(){
         //convert.call(this, 'gray');
         convert.call(this, 'wb');
         //clearNoise.call(this);
         charSplit.call(this);
         //medianFiltering.call(this);
         //threeChannelFiltering.call(this);
+    };
+
+    // 加这个是考虑性能问题，直接用 DOM 接口取值会严重降低性能
+    // 最后一个参数设置按照原始数据输出
+    fn.getImageMatrix = function(x, y, w, h, raw){
+        var width = this.cvs.width,
+            height = this.cvs.height,
+            i, j, ret = [],
+            raw = typeof(raw) == 'undefined' ? false : raw,
+            image = this.imageMatrix || this.ctx.getImageData(0, 0, width, height).data;   // 原始图片数据
+
+        w = w || 1;
+        h = h || 1;
+
+        for(j = y * width * 4; j < (y + h) * width * 4;){  // 计算对应的行数
+            for(i = x * 4; i < (x + w) * 4;){       // 计算对应的列数
+                if(raw){                            // 如果需要返回原始结构，就将原始的序列返回
+                    ret.push(image[j + i]);
+                    ret.push(image[j + i + 1]);
+                    ret.push(image[j + i + 2]);
+                    ret.push(image[j + i + 3]);
+                }else{
+                    ret.push({                       // 添加像素信息，保存的是RGBA信息
+                        red: image[j + i],
+                        green: image[j + i + 1],
+                        blue: image[j + i + 2],
+                        alpha: image[j + i + 3]
+                    });
+                }
+                i += 4;
+            }
+            j += width;
+        }
+        return ret;
     };
 
     /* 取前景背景的临界值 */
@@ -288,6 +324,7 @@
             _image.data[i + 2] = _imageData;
         }
 
+        this.imageMatrix = _image.data;
         mine.ctx.putImageData(_image, 0, 0);
         return mine;
     }
@@ -297,21 +334,27 @@
         var _height = this.cvs.height,
             _width = this.cvs.width,
             _matrixs = [],  // 保存拆分后的矩阵
+            _matrixIndex = 0, // 块矩阵索引
             _rows = [],  // 用于保存行内像素值总和
             _rowArray = [], // 用于保存行矩阵
             _pixel = 0,   // 像素值
             _blockFlag = false, // 块标记
             _blockArray = []; // 块矩阵
 
-        for(var i = 0; i < _height; i++){
+        for(var i = 0; i < _height; i++){         // 遍历图片高度进行分拆
             _rows[i] = 0;
-            _rowArray = [];
-            for(var j = 0; j < _width; j++){
-                _pixel = this.ctx.getImageData(j, i, 1, 1).data[0] == 255 ? 0 : 1;
+            if(_blockFlag == false){         // 如果块标记为flase，表示当前块已结束，需要重新进行计算
+                _rowArray = [];
+            }
+            for(var j = 0; j < _width; j++){         // 遍历列，需要取到当前行里边是否有有效地像素
+                _pixel = this.getImageMatrix(j, i, 1, 1)[0].red == 255 ? 0 : 1;
                 _rows[i] += _pixel;
                 _rowArray.push(_pixel);
             }
-            if(_rows[i] !== 0){
+            if(_blockFlag == true && _rows[i] === 0){         // 如果块标记为 true ，表示当前在块中。但如果当前行没有可用像素，就表示当前块已经结束，将块推入矩阵
+                _matrixs.push(_blockArray);
+            }
+            if(_rows[i] !== 0){         // 如果当前行存在有效像素就推入块矩阵
                 _blockFlag = true;
                 _blockArray.push(_rowArray);
             }else{
@@ -319,7 +362,7 @@
                 _blockArray = [];
             }
         }
-        console.log("row", _rows);
+        console.log("_matrixs", _matrixs);
     }
 
     if(typeof define === 'function'){
