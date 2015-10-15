@@ -378,10 +378,13 @@
         获取单行的所有有效列，拆分有效列
          */
         function getColsMatrix(rowMatrix){
-            
+
         }
 
-        console.log("_matrixs", getAllRowsMatrix());
+        var colMatrix = getAllRowsMatrix()[0];
+        getColsMatrix(colMatrix);
+
+        console.log("colMatrix", colMatrix);
     }
 
     if(typeof define === 'function'){
