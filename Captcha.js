@@ -340,6 +340,9 @@
     /* 字符拆分 */
     function charSplit(){
         var _this = this;
+        /*
+        获取全部有效行的矩阵，拆分有效行
+         */
         function getAllRowsMatrix(){
             var _height = _this.cvs.height,
                 _width = _this.cvs.width,
@@ -352,12 +355,10 @@
 
             for(var i = 0; i < _height; i++){         // 遍历图片高度进行分拆
                 _rows[i] = 0;
-                if(_blockFlag == false){         // 如果块标记为flase，表示当前块已结束，需要重新进行计算
-                    _rowArray = [];
-                }
+                _rowArray = [];
                 for(var j = 0; j < _width; j++){         // 遍历列，需要取到当前行里边是否有有效地像素
                     _pixel = _this.getImageMatrix(j, i, 1, 1)[0].red == 255 ? 0 : 1;
-                    _rows[i] += _pixel;
+                    _rows[i] |= _pixel;
                     _rowArray.push(_pixel);
                 }
                 if(_blockFlag == true && _rows[i] === 0){         // 如果块标记为 true ，表示当前在块中。但如果当前行没有可用像素，就表示当前块已经结束，将块推入矩阵
@@ -372,6 +373,12 @@
                 }
             }
             return _matrixs;
+        }
+        /*
+        获取单行的所有有效列，拆分有效列
+         */
+        function getColsMatrix(rowMatrix){
+            
         }
 
         console.log("_matrixs", getAllRowsMatrix());
