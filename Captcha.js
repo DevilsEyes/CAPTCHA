@@ -12,10 +12,10 @@
 
     var captcha = function(options){
         this.options = CaptchaHelper.extend({
-            matrixRadius: 1,
-            medianSize: 3,
-            dgGrayValue: null,
-            maxNearPoints: 1
+            matrixRadius: 1,      // 矩阵半径，用于给 Canvas 处理时留边
+            medianSize: 3,       // 滤波处理时的操作半径
+            dgGrayValue: null,     // 北京临界值
+            maxNearPoints: 1       // 允许像素周围最多有多少噪点
         }, options);
         return this;
     };
@@ -34,23 +34,25 @@
     };
 
     fn.init = function(){
+        // 初始化整个 Canvas
         var width = this.cvs.width = this.img.offsetWidth + this.options.matrixRadius * 2,
             height = this.cvs.height = this.img.offsetHeight + this.options.matrixRadius * 2;
         this.ctx.rect(0, 0, width, height);
         this.ctx.fillStyle = "#FFF";
         this.ctx.fill();
         this.ctx.drawImage(this.img, this.options.matrixRadius, this.options.matrixRadius);
-        //this.options.dgGrayValue = getDgGrayValue.call(this); // 取灰度临界值，太耗时，先暂时用估计值
-        this.options.dgGrayValue = 188;
+        this.imageMatrix = this.ctx.getImageData(0, 0, this.cvs.width, this.cvs.height).data;   // 保存原始数据至矩阵
+        this.options.dgGrayValue = getDgGrayValue.call(this); // 获取前景与背景的临界值
     };
 
+    // 进行识别的处理逻辑，本次只应用手写识别，所以只开启二值化与字符拆分
     fn.recognition = function(){
-        //convert.call(this, 'gray');
-        convert.call(this, 'wb');
-        //clearNoise.call(this);
-        charSplit.call(this);
-        //medianFiltering.call(this);
-        //threeChannelFiltering.call(this);
+        //convert.call(this, 'gray');           // 进行灰度处理
+        convert.call(this, 'wb');           // 进行二值化处理
+        //clearNoise.call(this);           // 进行降噪处理
+        charSplit.call(this);           // 进行字符拆分处理
+        //medianFiltering.call(this);           // 进行中值滤波处理
+        //threeChannelFiltering.call(this);           // 进行三通道滤波处理
     };
 
     // 加这个是考虑性能问题，直接用 DOM 接口取值会严重降低性能
@@ -59,14 +61,14 @@
         var width = this.cvs.width,
             height = this.cvs.height,
             i, j, ret = [],
-            raw = typeof(raw) == 'undefined' ? false : raw,
             image = this.imageMatrix || this.ctx.getImageData(0, 0, width, height).data;   // 原始图片数据
+        raw = typeof(raw) == 'undefined' ? false : raw;
 
         w = w || 1;
         h = h || 1;
 
-        for(j = y * width * 4; j < (y + h) * width * 4;){  // 计算对应的行数
-            for(i = x * 4; i < (x + w) * 4;){       // 计算对应的列数
+        for(j = y * width * 4; j < (y + h) * width * 4; j += width * 4){  // 计算对应的行数
+            for(i = x * 4; i < (x + w) * 4; i += 4){       // 计算对应的列数
                 if(raw){                            // 如果需要返回原始结构，就将原始的序列返回
                     ret.push(image[j + i]);
                     ret.push(image[j + i + 1]);
@@ -80,14 +82,17 @@
                         alpha: image[j + i + 3]
                     });
                 }
-                i += 4;
             }
-            j += width;
         }
         return ret;
     };
 
     /* 取前景背景的临界值 */
+    /*
+        涉及的知识：
+            类间方差（graythresh）：http://baike.baidu.com/view/7172489.htm
+            直方图：http://baike.baidu.com/item/直方图/1103834
+     */
     function getDgGrayValue(){
         var pixelNum = (function(size){
             var arr = [],i = 0;
@@ -102,7 +107,7 @@
         //生成直方图
         for (var i =0; i < this.cvs.width ; i++){
             for (var j = 0; j < this.cvs.height; j++){ //返回各点的颜色，以RGB表示
-                pixelNum[this.ctx.getImageData(i,j,1,1).data[0]]++; //相应的直方图加1
+                pixelNum[this.getImageMatrix(i,j,1,1)[0].red]++; //相应的直方图加1
             }
         }
         //直方图平滑化
@@ -145,6 +150,7 @@
     }
 
     /* 图片去噪 */
+    // TODO 这里也需要优化，效率太特么低下了
     function clearNoise(){
         var piexl;
         var nearDots = 0;
@@ -158,14 +164,14 @@
                     if (i == 0 || i == this.cvs.width - 1 || j == 0 || j == this.cvs.height - 1){  //边框全去掉
                         this.ctx.putImageData(piexl, i, j); //.SetPixel(i, j, Color.FromArgb(255, 255, 255));
                     } else {
-                        if (this.ctx.getImageData(i - 1, j - 1, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
-                        if (this.ctx.getImageData(i, j - 1, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
-                        if (this.ctx.getImageData(i + 1, j - 1, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
-                        if (this.ctx.getImageData(i - 1, j, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
-                        if (this.ctx.getImageData(i + 1, j, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
-                        if (this.ctx.getImageData(i - 1, j + 1, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
-                        if (this.ctx.getImageData(i, j + 1, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
-                        if (this.ctx.getImageData(i + 1, j + 1, 1, 1).data[0] < this.options.dgGrayValue) nearDots++;
+                        if (this.getImageMatrix(i - 1, j - 1, 1, 1)[0].red < this.options.dgGrayValue) nearDots++;
+                        if (this.getImageMatrix(i, j - 1, 1, 1)[0].red < this.options.dgGrayValue) nearDots++;
+                        if (this.getImageMatrix(i + 1, j - 1, 1, 1)[0].red < this.options.dgGrayValue) nearDots++;
+                        if (this.getImageMatrix(i - 1, j, 1, 1)[0].red < this.options.dgGrayValue) nearDots++;
+                        if (this.getImageMatrix(i + 1, j, 1, 1)[0].red < this.options.dgGrayValue) nearDots++;
+                        if (this.getImageMatrix(i - 1, j + 1, 1, 1)[0].red < this.options.dgGrayValue) nearDots++;
+                        if (this.getImageMatrix(i, j + 1, 1, 1)[0].red < this.options.dgGrayValue) nearDots++;
+                        if (this.getImageMatrix(i + 1, j + 1, 1, 1)[0].red < this.options.dgGrayValue) nearDots++;
                     }
 
                     if (nearDots < this.options.maxNearPoints){    // 如果周围噪点小于规定的最大噪点阈值，标记为空点
@@ -186,6 +192,7 @@
     }
 
     /* 快速单通道中值滤波 两种滤波效果差不多 灰度滤波 */
+    // TODO 这里也需要优化，效率太特么低下了
     function medianFiltering(){
         var p = [],
             _pixel,
@@ -227,6 +234,7 @@
     }
 
     /* 慢速三通道中值滤波 如果需要保留色彩则使用三通道滤波 */
+    // TODO 这里也需要优化，效率太特么低下了
     function threeChannelFiltering(){
         var _height = this.cvs.height,
             _width = this.cvs.width,
@@ -305,7 +313,7 @@
             "gray": function(r,g,b){            // 去色，变为灰度。 299 587 114 这几个数据是求灰度最接近的阈值
                 return parseFloat(r * 299 / 1000 + g * 587 / 1000 + b * 114 / 1000);
             },
-            "wb": function(r,g,b){            // 二值化，使用获取到的临界值进行二值化
+            "wb": function(r,g,b){            // 二值化，使用 RGB 三色的灰度平均值与获取到的临界值进行二值化处理
                 return parseInt((r + g + b) / 3) > mine.options.dgGrayValue ? 255 : 0;
             }
         };
@@ -324,45 +332,49 @@
             _image.data[i + 2] = _imageData;
         }
 
-        this.imageMatrix = _image.data;
+        this.imageMatrix = _image.data;  // 将已处理的原始数据存入矩阵
         mine.ctx.putImageData(_image, 0, 0);
         return mine;
     }
 
     /* 字符拆分 */
     function charSplit(){
-        var _height = this.cvs.height,
-            _width = this.cvs.width,
-            _matrixs = [],  // 保存拆分后的矩阵
-            _matrixIndex = 0, // 块矩阵索引
-            _rows = [],  // 用于保存行内像素值总和
-            _rowArray = [], // 用于保存行矩阵
-            _pixel = 0,   // 像素值
-            _blockFlag = false, // 块标记
-            _blockArray = []; // 块矩阵
+        var _this = this;
+        function getAllRowsMatrix(){
+            var _height = _this.cvs.height,
+                _width = _this.cvs.width,
+                _matrixs = [],  // 保存拆分后的矩阵
+                _rows = [],  // 用于保存行内像素值总和
+                _rowArray = [], // 用于保存行矩阵
+                _pixel = 0,   // 像素值
+                _blockFlag = false, // 块标记
+                _blockArray = []; // 块矩阵
 
-        for(var i = 0; i < _height; i++){         // 遍历图片高度进行分拆
-            _rows[i] = 0;
-            if(_blockFlag == false){         // 如果块标记为flase，表示当前块已结束，需要重新进行计算
-                _rowArray = [];
+            for(var i = 0; i < _height; i++){         // 遍历图片高度进行分拆
+                _rows[i] = 0;
+                if(_blockFlag == false){         // 如果块标记为flase，表示当前块已结束，需要重新进行计算
+                    _rowArray = [];
+                }
+                for(var j = 0; j < _width; j++){         // 遍历列，需要取到当前行里边是否有有效地像素
+                    _pixel = _this.getImageMatrix(j, i, 1, 1)[0].red == 255 ? 0 : 1;
+                    _rows[i] += _pixel;
+                    _rowArray.push(_pixel);
+                }
+                if(_blockFlag == true && _rows[i] === 0){         // 如果块标记为 true ，表示当前在块中。但如果当前行没有可用像素，就表示当前块已经结束，将块推入矩阵
+                    _matrixs.push(_blockArray);
+                }
+                if(_rows[i] !== 0){         // 如果当前行存在有效像素就推入块矩阵
+                    _blockFlag = true;
+                    _blockArray.push(_rowArray);
+                }else{
+                    _blockFlag = false;
+                    _blockArray = [];
+                }
             }
-            for(var j = 0; j < _width; j++){         // 遍历列，需要取到当前行里边是否有有效地像素
-                _pixel = this.getImageMatrix(j, i, 1, 1)[0].red == 255 ? 0 : 1;
-                _rows[i] += _pixel;
-                _rowArray.push(_pixel);
-            }
-            if(_blockFlag == true && _rows[i] === 0){         // 如果块标记为 true ，表示当前在块中。但如果当前行没有可用像素，就表示当前块已经结束，将块推入矩阵
-                _matrixs.push(_blockArray);
-            }
-            if(_rows[i] !== 0){         // 如果当前行存在有效像素就推入块矩阵
-                _blockFlag = true;
-                _blockArray.push(_rowArray);
-            }else{
-                _blockFlag = false;
-                _blockArray = [];
-            }
+            return _matrixs;
         }
-        console.log("_matrixs", _matrixs);
+
+        console.log("_matrixs", getAllRowsMatrix());
     }
 
     if(typeof define === 'function'){
