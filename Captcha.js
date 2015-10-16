@@ -408,17 +408,21 @@
                 });
             }
             return ret;
-        }());
+        }()),
+            s = [];            // 用于保存样本总数，实际上就是行数
 
-        splitMatrix(matrixMap).forEach(function(n){            // 将原始矩阵进行拆分，主要用于取分离的每行的数据
-            splitMatrix(rotateMatrix(n, -1)).forEach(function(m){            // 将拆分的每一行的矩阵做个旋转，之后再进行拆分，主要取每行里的有效数字
+        splitMatrix(matrixMap).forEach(function(n, i){            // 将原始矩阵进行拆分，主要用于取分离的每行的数据
+            splitMatrix(rotateMatrix(n, -1)).forEach(function(m, j){            // 将拆分的每一行的矩阵做个旋转，之后再进行拆分，主要取每行里的有效数字
                 splitMatrix(rotateMatrix(m)).forEach(function(o){            // 将每个数字在进行旋转（转回正常角度），再进行拆分（用于切掉多余的上下空白）
-                    output(o);
+                    if(!s[i]){
+                        s[i] = [];
+                    }
+                    s[i][j] = o;
                 });
             });
         });
 
-        function output(arr){
+        function output(arr){   // 输出阵列，用于检查阵列结构
             var s = '';
             arr.forEach(function(n){
                 s = [];
@@ -426,8 +430,10 @@
                     s += n == 1 ? '嘿' : '　';
                 });
                 console.log('%c ' + s,'font-size:2px');
-            })
+            });
         }
+
+        return s;
     }
 
     if(typeof define === 'function'){
