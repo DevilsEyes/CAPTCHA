@@ -417,7 +417,7 @@
                     if(!s[i]){
                         s[i] = [];
                     }
-                    s[i][j] = o;
+                    s[i][j] = normalization(o);
                 });
             });
         });
@@ -434,6 +434,13 @@
         }
 
         return s;
+    }
+
+    /*
+    归一化处理
+     */
+    function normalization(matrix){
+        return matrix;
     }
 
     if(typeof define === 'function'){
