@@ -341,11 +341,11 @@
     function charSplit(){
         var _this = this;
         /*
-        获取全部有效行的矩阵，拆分有效行
+        获取单行的所有有效列，拆分有效列
          */
-        function getAllRowsMatrix(){
-            var _height = _this.cvs.height,
-                _width = _this.cvs.width,
+        function splitMatrix(matrix){
+            var _width = matrix[0].length,
+                _height = matrix.length,
                 _matrixs = [],  // 保存拆分后的矩阵
                 _rows = [],  // 用于保存行内像素值总和
                 _rowArray = [], // 用于保存行矩阵
@@ -357,9 +357,9 @@
                 _rows[i] = 0;
                 _rowArray = [];
                 for(var j = 0; j < _width; j++){         // 遍历列，需要取到当前行里边是否有有效地像素
-                    _pixel = _this.getImageMatrix(j, i, 1, 1)[0].red == 255 ? 0 : 1;
-                    _rows[i] |= _pixel;
-                    _rowArray.push(_pixel);
+                    _pixel = matrix[i][j];             // 取ij位的像素信息
+                    _rows[i] |= _pixel;                   // 将i行的结果进行逻辑或操作，如果有一个是有效像素则表示该行有效
+                    _rowArray.push(_pixel);               // 将这样的像素信息保存到行矩阵
                 }
                 if(_blockFlag == true && _rows[i] === 0){         // 如果块标记为 true ，表示当前在块中。但如果当前行没有可用像素，就表示当前块已经结束，将块推入矩阵
                     _matrixs.push(_blockArray);
@@ -374,17 +374,60 @@
             }
             return _matrixs;
         }
-        /*
-        获取单行的所有有效列，拆分有效列
-         */
-        function getColsMatrix(rowMatrix){
 
+        /*
+         r 是旋转方向，大于0表示顺时针旋转90度，小于0表示逆时针旋转90度
+         */
+        function rotateMatrix(matrix, r){
+            var ret = [];
+            r = r || 1;     // 处理翻转的方向，设置一个默认值
+            (r < 0 ? matrix.reverse() : matrix).forEach(function(n, i){     // 遍历所有的行
+                (r > 0 ? n.reverse() : n).forEach(function(m, j){     // 遍历所有的列
+                    if(!ret[j]){     //初始化行矩阵
+                        ret[j] = [];
+                    }
+                    ret[j][i] = m;
+                });
+            });
+
+            return ret;
         }
 
-        var colMatrix = getAllRowsMatrix()[0];
-        getColsMatrix(colMatrix);
+        var matrixMap = (function(){
+            var height = _this.cvs.height,
+                width = _this.cvs.width,
+                map = _this.getImageMatrix(0, 0, width, height),
+                ret = [[]], index = 0;
+            if(map.length){
+                map.forEach(function(n, i){
+                    index = ~~(i / width);
+                    if(!ret[index]){
+                        ret[index] = [];
+                    }
+                    ret[index].push(n.red == 255 ? 0 : 1);
+                });
+            }
+            return ret;
+        }());
 
-        console.log("colMatrix", colMatrix);
+        splitMatrix(matrixMap).forEach(function(n){            // 将原始矩阵进行拆分，主要用于取分离的每行的数据
+            splitMatrix(rotateMatrix(n, -1)).forEach(function(m){            // 将拆分的每一行的矩阵做个旋转，之后再进行拆分，主要取每行里的有效数字
+                splitMatrix(rotateMatrix(m)).forEach(function(o){            // 将每个数字在进行旋转（转回正常角度），再进行拆分（用于切掉多余的上下空白）
+                    output(o);
+                });
+            });
+        });
+
+        function output(arr){
+            var s = '';
+            arr.forEach(function(n){
+                s = [];
+                n.forEach(function(n){
+                    s += n == 1 ? '嘿' : '　';
+                });
+                console.log('%c ' + s,'font-size:2px');
+            })
+        }
     }
 
     if(typeof define === 'function'){
