@@ -48,9 +48,9 @@
     // 进行识别的处理逻辑，本次只应用手写识别，所以只开启二值化与字符拆分
     fn.recognition = function(){
         //convert.call(this, 'gray');           // 进行灰度处理
-        convert.call(this, 'wb');           // 进行二值化处理
+        convert(this.cvs, 'wb', this.options.dgGrayValue);           // 进行二值化处理
         //clearNoise.call(this);           // 进行降噪处理
-        charSplit.call(this);           // 进行字符拆分处理
+        charSplit.call(this,this.cvs);           // 进行字符拆分处理
         //medianFiltering.call(this);           // 进行中值滤波处理
         //threeChannelFiltering.call(this);           // 进行三通道滤波处理
     };
@@ -307,19 +307,25 @@
     }
 
     /* 转换为灰度或二值化 */
-    function convert(type){ //gray,wb
-        var mine = this;
+    /*
+    用法：
+    1、转灰度：convert(canvas,'gray');
+    2、转黑白：convert(canvas,'wb',GrayValue);
+     */
+    function convert(canvas, type, GrayValue){ //gray,wb
+        var _canvas = canvas;
+        var _ctx = canvas.getContext('2d');
         var __effect = {
             "gray": function(r,g,b){            // 去色，变为灰度。 299 587 114 这几个数据是求灰度最接近的阈值
                 return parseFloat(r * 299 / 1000 + g * 587 / 1000 + b * 114 / 1000);
             },
             "wb": function(r,g,b){            // 二值化，使用 RGB 三色的灰度平均值与获取到的临界值进行二值化处理
-                return parseInt((r + g + b) / 3) > mine.options.dgGrayValue ? 255 : 0;
+                return parseInt((r + g + b) / 3) > GrayValue ? 255 : 0;
             }
         };
-
-        var _image = mine.ctx.getImageData(0, 0, mine.cvs.width, mine.cvs.height),
-            _imageSize = mine.cvs.width * mine.cvs.height;
+debugger
+        var _image = _ctx.getImageData(0, 0, _canvas.width, _canvas.height),
+            _imageSize = _canvas.width * _canvas.height;
 
         for (var i = 0; i < _imageSize * 4; i += 4) {
             var _red = _image.data[i];               // 红色位
@@ -333,12 +339,13 @@
         }
 
         this.imageMatrix = _image.data;  // 将已处理的原始数据存入矩阵
-        mine.ctx.putImageData(_image, 0, 0);
-        return mine;
+        _ctx.putImageData(_image, 0, 0);
+        return _canvas;
     }
 
     /* 字符拆分 */
-    function charSplit(){
+    function charSplit(canvas){
+        var _canvas = canvas;
         var _this = this;
         /*
         获取单行的所有有效列，拆分有效列
@@ -394,8 +401,8 @@
         }
 
         var matrixMap = (function(){
-            var height = _this.cvs.height,
-                width = _this.cvs.width,
+            var height = _canvas.height,
+                width = _canvas.width,
                 map = _this.getImageMatrix(0, 0, width, height),
                 ret = [[]], index = 0;
             if(map.length){
@@ -440,6 +447,20 @@
     归一化处理
      */
     function normalization(matrix){
+        function createCanvas(width, height){
+            var _canvas = document.createElement('canvas');
+            var ctx = _canvas.getContext("2d");
+
+            _canvas.width = width || 32;
+            _canvas.height = height || 32;
+
+            return {
+                canvas: _canvas,
+                context2d: ctx
+            }
+        }
+
+
         return matrix;
     }
 
